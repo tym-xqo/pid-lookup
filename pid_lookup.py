@@ -42,9 +42,6 @@ def result(pid=0):
         local_bind_address=("0.0.0.0", 7532),
     ):
         db_url = os.getenv("DATABASE_URL")
-        conn = psycopg2.connect(db_url)
-        db = conn.cursor(cursor_factory=RealDictCursor)
-
         sql = (
             "select query_age::text"
             "     , xact_age::text"
@@ -58,11 +55,15 @@ def result(pid=0):
             "  from pid_lookup(%s)"
         )
 
+        conn = psycopg2.connect(db_url)
+        db = conn.cursor(cursor_factory=RealDictCursor)
+
         # DBAPI expects SQL bind parameter values in a tuple,
         # even when there's only one.
         db.execute(sql, (pid,))
         dat = db.fetchone()
         conn.close()
+
         if not dat:
             return f"PID {pid} not found"
         return yaml.safe_dump(dict(dat))
