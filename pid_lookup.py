@@ -32,12 +32,13 @@ def result(pid=0):
     arg: `pid` integer
     returns: YAML string with selected  pg_stat_activity results
     """
+    # TODO: Maybe don't hard-code username and key path
     with SSHTunnelForwarder(
         (os.getenv("BASTION_ADDR"), 22),
-        remote_bind_address=(os.getenv("POSTGRES_ADDR"), 5432),
-        ssh_pkey="~/.ssh/identity",  # TODO: move to env config
-        ssh_private_key_password=os.getenv("PASSPHRASE"),
         ssh_username="deploy",
+        ssh_pkey="~/.ssh/identity",
+        ssh_private_key_password=os.getenv("PASSPHRASE"),
+        remote_bind_address=(os.getenv("POSTGRES_ADDR"), 5432),
         local_bind_address=("0.0.0.0", 7532),
     ):
         db_url = os.getenv("DATABASE_URL")
