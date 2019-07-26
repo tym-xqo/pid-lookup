@@ -12,6 +12,7 @@ ln -s ./pid_lookup.py /usr/local/bin/pidlkp
 ## Configure
 
 Edit `.env` to suit your case
+As database superuser, run [`schema.sql`](schema.sql) against your `$DATABASE_URL` database, if needed. (The DDL is idempotent; it won't hurt anything if run more than once, but isn't necessary to repeat.)
 
 ## Use
 
