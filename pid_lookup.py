@@ -1,39 +1,52 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -
+
+# tym@benchprep.com 2019-07-25
+""" Module to display activity stats for a given PID value
+"""
+
 import argparse
 import os
 
+# activate virtualenv for outer interpreter
 activate_this = (
     f"{os.path.dirname(os.path.realpath(__file__))}/.venv/bin/activate_this.py"
 )
 exec(open(activate_this).read(), {"__file__": activate_this})
 
+# virtualenv imports after activation
 import psycopg2  # noqa E402
 import yaml  # noqa E402
 from dotenv import load_dotenv  # noqa E402
 from psycopg2.extras import RealDictCursor  # noqa E402
 from sshtunnel import SSHTunnelForwarder  # noqa E402
 
-
+# load config from .env
 load_dotenv(f"{os.path.dirname(os.path.realpath(__file__))}/.env")
 
 
 def result(pid=0):
+    """ Connect to database via ssh bastion & submit query with :pid parameter
+    set to `pid` argument
+
+    arg: `pid` integer
+    returns: YAML string with selected  pg_stat_activity results
+    """
     with SSHTunnelForwarder(
         (os.getenv("BASTION_ADDR"), 22),
         remote_bind_address=(os.getenv("POSTGRES_ADDR"), 5432),
-        ssh_pkey="~/.ssh/identity",
+        ssh_pkey="~/.ssh/identity",  # TODO: move to env config
         ssh_private_key_password=os.getenv("PASSPHRASE"),
         ssh_username="deploy",
         local_bind_address=("0.0.0.0", 7532),
-    ) as tunnel:  # noqa F841
+    ):
         db_url = os.getenv("DATABASE_URL")
         conn = psycopg2.connect(db_url)
         db = conn.cursor(cursor_factory=RealDictCursor)
-        # db = _db()
+
         sql = (
-            "select extract(epoch from query_age) as query_age_secs"
-            "     , extract(epoch from xact_age) as xact_age_secs"
+            "select query_age::text"
+            "     , xact_age::text"
             "     , pid"
             "     , application_name"
             "     , query"
@@ -43,6 +56,9 @@ def result(pid=0):
             "     , wait_event"
             "  from pid_lookup(%s)"
         )
+
+        # DBAPI expects SQL bind parameter values in a tuple,
+        # even when there's only one.
         db.execute(sql, (pid,))
         dat = db.fetchone()
         conn.close()
@@ -52,8 +68,10 @@ def result(pid=0):
 
 
 if __name__ == "__main__":
+    """ Get pid from command line arg, pass to result(), and print to stdout
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("pid")
     args = parser.parse_args()
-    answer = result(int(args.pid))
-    print(answer)
+    result = result(int(args.pid))
+    print(result)
